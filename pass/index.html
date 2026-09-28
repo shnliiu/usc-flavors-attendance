@@ -27,15 +27,20 @@ function stopPolling(){
   pollTimer=null;
 }
 
+function passIsVisible(){return document.visibilityState==='visible'&&document.hasFocus()}
 function scheduleNext(meetingOpen){
   clearTimeout(pollTimer);
-  if(stopped||document.hidden)return;
-  const delay=meetingOpen?20000:60000;
-  pollTimer=setTimeout(checkStatus,delay);
+  pollTimer=null;
+  if(stopped||!passIsVisible())return;
+  const delay=meetingOpen?30000:60000;
+  pollTimer=setTimeout(()=>{
+    pollTimer=null;
+    if(passIsVisible())checkStatus();
+  },delay);
 }
 
 async function checkStatus(){
-  if(stopped||document.hidden)return;
+  if(stopped||!passIsVisible())return;
   try{
     const d=await memberStatus();
     if(!d||!d.found)return scheduleNext(false);
@@ -70,19 +75,22 @@ async function load(){
   }catch(e){fail(e.message)}
 }
 
+function pausePassChecks(){
+  clearTimeout(pollTimer);
+  pollTimer=null;
+}
+function resumePassChecks(){
+  if(stopped||lastChecked===null||!passIsVisible())return;
+  checkStatus();
+}
 document.addEventListener('visibilitychange',()=>{
-  if(stopped)return;
-  if(document.hidden){
-    clearTimeout(pollTimer);
-    pollTimer=null;
-  }else{
-    checkStatus();
-  }
+  if(document.visibilityState!=='visible')pausePassChecks();
+  else resumePassChecks();
 });
-
-window.addEventListener('pageshow',()=>{
-  if(!stopped&&lastChecked!==null&&!document.hidden)checkStatus();
-});
+window.addEventListener('blur',pausePassChecks);
+window.addEventListener('focus',resumePassChecks);
+window.addEventListener('pagehide',pausePassChecks);
+window.addEventListener('pageshow',resumePassChecks);
 
 function fail(msg='Card not found. Check the link and try again.'){
   stopPolling();
