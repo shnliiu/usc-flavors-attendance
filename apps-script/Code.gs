@@ -109,7 +109,15 @@ function applyAttendanceFormatting_(s,col){
 }
 function getMemberPublic_(code){
   const id=String(code||'').trim().toUpperCase(),s=SpreadsheetApp.getActive().getSheetByName(ROSTER_SHEET);if(!id||s.getLastRow()<2)return{ok:false,found:false};
-  const rows=s.getRange(2,1,s.getLastRow()-1,3).getDisplayValues();for(const r of rows)if(String(r[0]).trim().toUpperCase()===id)return{ok:true,found:true,firstName:String(r[1]).trim(),lastName:String(r[2]).trim()};
+  const rows=s.getRange(2,1,s.getLastRow()-1,3).getDisplayValues();
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i];
+    if(String(r[0]).trim().toUpperCase()===id){
+      const cfg=getConfigMap_(),col=Number(cfg.OPEN_MEETING_COLUMN||0),open=cfg.OPEN_MEETING_DATE===today_()&&col>0;
+      const checkedIn=open&&s.getRange(i+2,col).getDisplayValue()==='Present';
+      return{ok:true,found:true,firstName:String(r[1]).trim(),lastName:String(r[2]).trim(),meetingOpen:open,meetingDate:open?cfg.OPEN_MEETING_DATE:null,checkedIn};
+    }
+  }
   return{ok:false,found:false};
 }
 function generatePassLinks(){
