@@ -43,8 +43,8 @@ function setupAttendanceSystem(){
   let l=ss.getSheetByName(LOG_SHEET); if(!l){l=ss.insertSheet(LOG_SHEET);l.getRange(1,1,1,5).setValues([['Timestamp','Meeting Date','Code','First Name','Last Name']]);l.hideSheet();}
   SpreadsheetApp.getUi().alert('Setup complete. Change SCANNER_PIN in Config.');
 }
-function getConfigMap_(){const s=SpreadsheetApp.getActive().getSheetByName(CONFIG_SHEET);if(!s)throw new Error('Config sheet is missing. Run setupAttendanceSystem first.');const v=s.getDataRange().getValues(),m={};for(let i=1;i<v.length;i++){const k=String(v[i][0]||'').trim();if(k)m[k]=String(v[i][1]??'').trim();}return m;}
-function setConfig_(k,val){const s=SpreadsheetApp.getActive().getSheetByName(CONFIG_SHEET),v=s.getDataRange().getValues();for(let i=1;i<v.length;i++){if(String(v[i][0]).trim()===k){s.getRange(i+1,2).setValue(val);return;}}s.appendRow([k,val]);}
+function getConfigMap_(){const s=SpreadsheetApp.getActive().getSheetByName(CONFIG_SHEET);if(!s)throw new Error('Config sheet is missing. Run setupAttendanceSystem first.');const v=s.getDataRange().getDisplayValues(),m={};for(let i=1;i<v.length;i++){const k=String(v[i][0]||'').trim();if(k)m[k]=String(v[i][1]??'').trim();}return m;}
+function setConfig_(k,val){const s=SpreadsheetApp.getActive().getSheetByName(CONFIG_SHEET),v=s.getDataRange().getDisplayValues();for(let i=1;i<v.length;i++){if(String(v[i][0]).trim()===k){const cell=s.getRange(i+1,2);cell.setNumberFormat('@');cell.setValue(String(val));return;}}const row=s.getLastRow()+1;s.getRange(row,1).setValue(k);s.getRange(row,2).setNumberFormat('@').setValue(String(val));}
 function tz_(){return getConfigMap_().TIME_ZONE||DEFAULT_TZ;}
 function today_(){return Utilities.formatDate(new Date(),tz_(),'yyyy-MM-dd');}
 function requirePin_(pin){const e=getConfigMap_().SCANNER_PIN;if(!e)throw new Error('Scanner PIN is not configured.');if(String(pin||'')!==String(e))throw new Error('Incorrect PIN');}
