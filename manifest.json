@@ -1,0 +1,10 @@
+{
+  "name":"USC Flavors Attendance",
+  "short_name":"Flavors",
+  "start_url":"/usc-flavors-attendance/",
+  "scope":"/usc-flavors-attendance/",
+  "display":"standalone",
+  "background_color":"#FFF3DF",
+  "theme_color":"#C4282D",
+  "icons":[{"src":"assets/logo.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
