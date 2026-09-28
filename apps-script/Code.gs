@@ -19,6 +19,7 @@ function doPost(e){
     if(action==='verifypin'){requirePin_(body.pin);return json_({ok:true});}
     if(action==='status'){requirePin_(body.pin);return json_(getStatus_());}
     if(action==='startmeeting'){requirePin_(body.pin);return json_(startMeeting_());}
+    if(action==='closemeeting'){requirePin_(body.pin);return json_(closeMeeting_());}
     if(action==='scan'){requirePin_(body.pin);return json_(recordScan_(String(body.code||'')));}
     return json_({ok:false,error:'Unknown action'});
   }catch(err){return json_({ok:false,error:err.message||String(err)});}
@@ -82,6 +83,11 @@ function getStatus_(){
   if(!cfg.OPEN_MEETING_DATE||!cfg.OPEN_MEETING_COLUMN)return{ok:true,open:false,date:null,checkedIn:0,total};
   const col=Number(cfg.OPEN_MEETING_COLUMN),checked=total?s.getRange(2,col,total,1).getDisplayValues().flat().filter(v=>v==='Present').length:0;
   return{ok:true,open:cfg.OPEN_MEETING_DATE===today_(),date:cfg.OPEN_MEETING_DATE,checkedIn:checked,total};
+}
+function closeMeeting_(){
+  const cfg=getConfigMap_(),col=Number(cfg.OPEN_MEETING_COLUMN||0);if(!cfg.OPEN_MEETING_DATE||!col)throw new Error('No meeting is open.');
+  finalizeColumn_(col);
+  return{ok:true,closed:true,date:cfg.OPEN_MEETING_DATE,status:getStatus_()};
 }
 function finalizeAbsences(){
   const cfg=getConfigMap_(),d=cfg.OPEN_MEETING_DATE,col=Number(cfg.OPEN_MEETING_COLUMN||0);if(!d||!col)return;
