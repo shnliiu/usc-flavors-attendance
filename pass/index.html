@@ -88,5 +88,5 @@ function fail(msg='Card not found. Check the link and try again.'){
   stopPolling();
   document.getElementById('content').innerHTML='<div class="nf"><h1>CARD NOT FOUND</h1><p>'+msg+'</p></div>';
 }
-load();
+const startupDelay=Math.floor(Math.random()*3001);setTimeout(load,startupDelay);
 </script></body></html>
