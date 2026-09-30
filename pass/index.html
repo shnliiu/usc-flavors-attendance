@@ -13,6 +13,14 @@ async function memberStatus(){
     return await r.json();
   }finally{requestInFlight=false}
 }
+async function checkInStatus(){
+  if(requestInFlight)return null;
+  requestInFlight=true;
+  try{
+    const r=await fetch(API_URL+'?action=checkin&id='+encodeURIComponent(code)+'&_='+Date.now(),{cache:'no-store'});
+    return await r.json();
+  }finally{requestInFlight=false}
+}
 
 function showCheckedIn(){
   document.getElementById('checkinConfirm').classList.add('show');
@@ -29,7 +37,7 @@ function scheduleNext(meetingOpen){
   clearTimeout(pollTimer);
   pollTimer=null;
   if(stopped||!passIsVisible())return;
-  const delay=meetingOpen?(Date.now()<fastUntil?5000+Math.floor(Math.random()*1501):15000+Math.floor(Math.random()*3001)):60000;
+  const delay=meetingOpen?(Date.now()<fastUntil?4000+Math.floor(Math.random()*2001):15000+Math.floor(Math.random()*3001)):60000;
   pollTimer=setTimeout(()=>{
     pollTimer=null;
     if(passIsVisible())checkStatus();
@@ -39,7 +47,7 @@ function scheduleNext(meetingOpen){
 async function checkStatus(){
   if(stopped||!passIsVisible())return;
   try{
-    const d=await memberStatus();
+    const d=await checkInStatus();
     if(!d||!d.found)return scheduleNext(false);
     if(lastChecked===false&&d.checkedIn===true)showCheckedIn();
     lastChecked=!!d.checkedIn;
