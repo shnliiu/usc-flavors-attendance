@@ -34,7 +34,7 @@ function onOpen(){SpreadsheetApp.getUi().createMenu('Flavors Attendance')
 function setupAttendanceSystem(){
   const ss=SpreadsheetApp.getActive();
   let r=ss.getSheetByName(ROSTER_SHEET); if(!r) r=ss.insertSheet(ROSTER_SHEET);
-  if(r.getLastRow()===0) r.getRange(1,1,1,3).setValues([['Code','Name','Email']]);
+  if(r.getLastRow()===0) r.getRange(1,1,1,4).setValues([['Code','Pass Link','Name','Email']]);
   let c=ss.getSheetByName(CONFIG_SHEET); if(!c)c=ss.insertSheet(CONFIG_SHEET);
   if(c.getLastRow()===0)c.getRange(1,1,6,2).setValues([
     ['Key','Value'],['SCANNER_PIN','2468'],['TIME_ZONE',DEFAULT_TZ],
@@ -133,6 +133,9 @@ function getMemberPublic_(code){
 function generatePassLinks(){
   const cfg=getConfigMap_(),base=(cfg.SITE_BASE_URL||'').replace(/\/$/,'');if(!base)throw new Error('Set SITE_BASE_URL in Config first.');
   const s=SpreadsheetApp.getActive().getSheetByName(ROSTER_SHEET),n=s.getLastRow();if(n<2)return;
-  const h=s.getRange(1,1,1,s.getLastColumn()).getDisplayValues()[0];let col=h.indexOf('Pass Link')+1;if(!col){col=s.getLastColumn()+1;s.getRange(1,col).setValue('Pass Link');}
-  const codes=s.getRange(2,1,n-1,1).getDisplayValues().flat();s.getRange(2,col,codes.length,1).setValues(codes.map(c=>[c?base+'/pass/?id='+encodeURIComponent(c):'']));
+  let h=s.getRange(1,1,1,s.getLastColumn()).getDisplayValues()[0],col=h.indexOf('Pass Link')+1;
+  if(!col){s.insertColumnAfter(1);col=2;s.getRange(1,col).setValue('Pass Link');}
+  else if(col!==2){s.moveColumns(s.getRange(1,col,s.getMaxRows(),1),2);col=2;}
+  const codes=s.getRange(2,1,n-1,1).getDisplayValues().flat();
+  s.getRange(2,col,codes.length,1).setValues(codes.map(c=>[c?base+'/pass/?id='+encodeURIComponent(c):'']));
 }
