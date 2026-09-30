@@ -34,14 +34,14 @@ function onOpen(){SpreadsheetApp.getUi().createMenu('Flavors Attendance')
 function setupAttendanceSystem(){
   const ss=SpreadsheetApp.getActive();
   let r=ss.getSheetByName(ROSTER_SHEET); if(!r) r=ss.insertSheet(ROSTER_SHEET);
-  if(r.getLastRow()===0) r.getRange(1,1,1,5).setValues([['Code','First Name','Last Name','Grade','Major']]);
+  if(r.getLastRow()===0) r.getRange(1,1,1,3).setValues([['Code','Name','Email']]);
   let c=ss.getSheetByName(CONFIG_SHEET); if(!c)c=ss.insertSheet(CONFIG_SHEET);
   if(c.getLastRow()===0)c.getRange(1,1,6,2).setValues([
     ['Key','Value'],['SCANNER_PIN','2468'],['TIME_ZONE',DEFAULT_TZ],
     ['SITE_BASE_URL','https://shnliiu.github.io/usc-flavors-attendance'],
     ['OPEN_MEETING_DATE',''],['OPEN_MEETING_COLUMN','']
   ]);
-  let l=ss.getSheetByName(LOG_SHEET); if(!l){l=ss.insertSheet(LOG_SHEET);l.getRange(1,1,1,5).setValues([['Timestamp','Meeting Date','Code','First Name','Last Name']]);l.hideSheet();}
+  let l=ss.getSheetByName(LOG_SHEET); if(!l){l=ss.insertSheet(LOG_SHEET);l.getRange(1,1,1,4).setValues([['Timestamp','Meeting Date','Code','Name']]);l.hideSheet();}
   let u=ss.getSheetByName('Used Codes');if(!u){u=ss.insertSheet('Used Codes');u.getRange(1,1,1,2).setValues([['Code','Issued At']]);u.hideSheet();}
   SpreadsheetApp.getUi().alert('Setup complete. Change SCANNER_PIN in Config.');
 }
@@ -59,7 +59,7 @@ function generateMissingCodes(){
   const used=new Set([...current,...historical]);
   const names=s.getRange(2,2,n-1,2).getDisplayValues(),out=s.getRange(2,1,n-1,1).getDisplayValues(),issued=[];
   for(let i=0;i<out.length;i++){
-    if(!(names[i][0]||names[i][1])||out[i][0])continue;
+    if(!names[i][0]||out[i][0])continue;
     let code;do{code=randomCode_();}while(used.has(code));
     used.add(code);out[i][0]=code;issued.push([code,new Date()]);
   }
@@ -69,7 +69,8 @@ function generateMissingCodes(){
 function startMeeting_(){
   const cfg=getConfigMap_(),d=today_();if(cfg.OPEN_MEETING_DATE===d&&Number(cfg.OPEN_MEETING_COLUMN)>0)return getStatus_();
   if(cfg.OPEN_MEETING_DATE)throw new Error('A previous meeting is still open.');
-  const s=SpreadsheetApp.getActive().getSheetByName(ROSTER_SHEET),col=Math.max(s.getLastColumn(),5)+1;
+  const s=SpreadsheetApp.getActive().getSheetByName(ROSTER_SHEET),headers=s.getRange(1,1,1,s.getLastColumn()).getDisplayValues()[0];let passCol=headers.indexOf('Pass Link')+1,col;
+  if(passCol){s.insertColumnBefore(passCol);col=passCol;}else{col=Math.max(s.getLastColumn(),3)+1;}
   s.getRange(1,col).setValue(d).setNumberFormat('@');if(s.getLastRow()>1)s.getRange(2,col,s.getLastRow()-1,1).clearContent().clearNote();
   applyAttendanceFormatting_(s,col);setConfig_('OPEN_MEETING_DATE',d);setConfig_('OPEN_MEETING_COLUMN',col);return getStatus_();
 }
@@ -80,12 +81,12 @@ function recordScan_(raw){
   if(idx<0)return{ok:false,type:'unknown',message:'Code not recognized.'};
   let cfg=getConfigMap_();if(!cfg.OPEN_MEETING_DATE)startMeeting_();cfg=getConfigMap_();
   if(cfg.OPEN_MEETING_DATE!==today_())return{ok:false,type:'closed',message:'No meeting is open for today.'};
-  const row=idx+2,col=Number(cfg.OPEN_MEETING_COLUMN),first=s.getRange(row,2).getDisplayValue().trim(),last=s.getRange(row,3).getDisplayValue().trim(),cell=s.getRange(row,col);
-  if(cell.getDisplayValue()==='Present')return{ok:true,type:'already',firstName:first,lastName:last,message:'Already checked in.',status:getStatus_()};
+  const row=idx+2,col=Number(cfg.OPEN_MEETING_COLUMN),name=s.getRange(row,2).getDisplayValue().trim(),cell=s.getRange(row,col);
+  if(cell.getDisplayValue()==='Present')return{ok:true,type:'already',name,firstName:name,lastName:'',message:'Already checked in.',status:getStatus_()};
   const now=new Date(),stamp=Utilities.formatDate(now,tz_(),'yyyy-MM-dd h:mm:ss a z');
   cell.setValue('Present').setNote('Checked in: '+stamp);
-  SpreadsheetApp.getActive().getSheetByName(LOG_SHEET).appendRow([now,cfg.OPEN_MEETING_DATE,code,first,last]);
-  return{ok:true,type:'success',firstName:first,lastName:last,status:getStatus_()};
+  SpreadsheetApp.getActive().getSheetByName(LOG_SHEET).appendRow([now,cfg.OPEN_MEETING_DATE,code,name]);
+  return{ok:true,type:'success',name,firstName:name,lastName:'',status:getStatus_()};
 }
 function getStatus_(){
   const s=SpreadsheetApp.getActive().getSheetByName(ROSTER_SHEET),cfg=getConfigMap_(),total=Math.max(s.getLastRow()-1,0);
@@ -118,13 +119,13 @@ function applyAttendanceFormatting_(s,col){
 }
 function getMemberPublic_(code){
   const id=String(code||'').trim().toUpperCase(),s=SpreadsheetApp.getActive().getSheetByName(ROSTER_SHEET);if(!id||s.getLastRow()<2)return{ok:false,found:false};
-  const rows=s.getRange(2,1,s.getLastRow()-1,3).getDisplayValues();
+  const rows=s.getRange(2,1,s.getLastRow()-1,2).getDisplayValues();
   for(let i=0;i<rows.length;i++){
     const r=rows[i];
     if(String(r[0]).trim().toUpperCase()===id){
       const cfg=getConfigMap_(),col=Number(cfg.OPEN_MEETING_COLUMN||0),open=cfg.OPEN_MEETING_DATE===today_()&&col>0;
       const checkedIn=open&&s.getRange(i+2,col).getDisplayValue()==='Present';
-      return{ok:true,found:true,firstName:String(r[1]).trim(),lastName:String(r[2]).trim(),meetingOpen:open,meetingDate:open?cfg.OPEN_MEETING_DATE:null,checkedIn};
+      const name=String(r[1]).trim();return{ok:true,found:true,name,firstName:name,lastName:'',meetingOpen:open,meetingDate:open?cfg.OPEN_MEETING_DATE:null,checkedIn};
     }
   }
   return{ok:false,found:false};
