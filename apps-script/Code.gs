@@ -9,6 +9,7 @@ function doGet(e){
   try{
     const action=String(e?.parameter?.action||'').toLowerCase();
     if(action==='member')return json_(getMemberPublic_(String(e.parameter.id||'')));
+    if(action==='checkin')return json_(getCheckInPublic_(String(e.parameter.id||'')));
     if(action==='health')return json_({ok:true,service:'USC Flavors Attendance'});
     return json_({ok:false,error:'Unknown action'});
   }catch(err){return json_({ok:false,error:err.message||String(err)});}
@@ -238,6 +239,7 @@ function recordScan_(raw,cfg){
   const now=new Date();
   const stamp=Utilities.formatDate(now,tzFromConfig_(cfg),'yyyy-MM-dd h:mm:ss a z');
   cell.setValue('Present').setNote('Checked in: '+stamp);
+  CacheService.getScriptCache().put('checked:'+meetingDate+':'+code,'1',21600);
 
   const log=SpreadsheetApp.getActive().getSheetByName(LOG_SHEET);
   if(log)log.appendRow([now,meetingDate,code,name]);
@@ -295,6 +297,18 @@ function applyAttendanceFormatting_(s,col){
   s.setConditionalFormatRules(keep.concat([p,a]));
 }
 
+function getCheckInPublic_(code){
+  const id=String(code||'').trim().toUpperCase();
+  if(!id)return{ok:false,found:false};
+  const member=getRosterLookup_()[id];
+  if(!member)return{ok:false,found:false};
+  const cfg=getConfigMap_(),open=cfg.OPEN_MEETING_DATE===todayFromConfig_(cfg)&&Number(cfg.OPEN_MEETING_COLUMN||0)>0;
+  if(!open)return{ok:true,found:true,meetingOpen:false,meetingDate:null,checkedIn:false};
+  const cache=CacheService.getScriptCache(),key='checked:'+cfg.OPEN_MEETING_DATE+':'+id;
+  if(cache.get(key)==='1')return{ok:true,found:true,meetingOpen:true,meetingDate:cfg.OPEN_MEETING_DATE,checkedIn:true};
+  return{ok:true,found:true,meetingOpen:true,meetingDate:cfg.OPEN_MEETING_DATE,checkedIn:false};
+}
+
 function getMemberPublic_(code){
   const id=String(code||'').trim().toUpperCase();
   if(!id)return{ok:false,found:false};
@@ -303,6 +317,7 @@ function getMemberPublic_(code){
   const {s}=rosterInfo_(),cfg=getConfigMap_(),col=Number(cfg.OPEN_MEETING_COLUMN||0);
   const open=cfg.OPEN_MEETING_DATE===todayFromConfig_(cfg)&&col>0;
   const checkedIn=!!(open&&s.getRange(member.row,col).getDisplayValue()==='Present');
+  if(checkedIn)CacheService.getScriptCache().put('checked:'+cfg.OPEN_MEETING_DATE+':'+id,'1',21600);
   return{ok:true,found:true,name:member.name,meetingOpen:open,meetingDate:open?cfg.OPEN_MEETING_DATE:null,checkedIn};
 }
 
