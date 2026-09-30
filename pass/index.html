@@ -1,9 +1,9 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#C4282D"><title>USC Flavors Member Pass</title><link rel="manifest" href="../manifest.json"><link rel="icon" href="../assets/flavors-flower.svg"><link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=DM+Sans:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet"><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><style>
-:root{--r:#C4282D;--c:#FFF3DF;--i:#2A1410;--p:#FFFDF8}*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:"DM Sans",sans-serif;color:var(--i)}body{min-height:100dvh;display:grid;place-items:center;padding:24px 15px calc(28px + env(safe-area-inset-bottom));background:#C4282D}.card{width:min(92vw,430px);background:var(--p);border:2px solid #ead9bf;border-radius:28px;box-shadow:0 26px 70px rgba(62,40,25,.19);padding:25px 22px 20px}.top{display:flex;justify-content:center;align-items:center;color:var(--r);border-bottom:2px dashed #d7c6ae;padding-bottom:17px;margin-bottom:2px}.top img.pass-wordmark{width:min(76vw,320px);height:auto;display:block;object-fit:contain}.word{display:none}.k{text-align:center;margin:17px 0 3px;font:600 12px "IBM Plex Mono";letter-spacing:1px}.name{text-align:center;font:29px "Bowlby One";color:var(--r);line-height:1.15;margin:0 0 18px}.qr{background:white;border:3px solid var(--i);border-radius:20px;padding:15px;width:max-content;max-width:100%;margin:auto;box-shadow:0 7px 0 #ead9bf}.qr canvas{display:block!important;width:min(62vw,270px)!important;height:min(62vw,270px)!important}.qr img{display:none!important}.receipt{margin-top:22px;border-top:2px dashed #d7c6ae;padding-top:14px;font:600 12px "IBM Plex Mono";line-height:1.8}.line{display:flex;gap:8px}.dots{flex:1;border-bottom:2px dotted #6b5148;transform:translateY(-5px)}.foot{text-align:center;margin-top:14px;font-size:11px;color:#69534b;line-height:1.45}.nf{text-align:center;padding:35px 8px}.nf h1{font:32px "Bowlby One";color:var(--r);margin:8px 0}.nf p{color:#684b43}.checkin-confirm{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(42,20,16,.28);backdrop-filter:blur(4px)}.checkin-confirm.show{display:flex}.checkin-box{width:min(88vw,360px);background:var(--p);border:3px solid var(--i);border-radius:26px;box-shadow:0 10px 0 #ead9bf;padding:34px 24px;text-align:center}.checkin-box h2{font:38px "Bowlby One";color:var(--r);margin:0 0 8px;line-height:1}.checkin-box p{font-size:17px;font-weight:700;margin:0;color:var(--i)}
-</style></head><body><main class="card"><div class="top"><img class="pass-wordmark" src="../assets/flavors-wordmark.svg" alt="FLAVORS"></div><div id="content"><div class="k">F26 COHORT PASS</div><div class="name" id="name">Loading…</div><div class="qr" id="qr"></div><div class="receipt"><div class="line"><span>1x FLAVORS MEMBER</span><span class="dots"></span><span>VERIFIED</span></div><div class="line"><span>GOOD COMPANY</span><span class="dots"></span><span>INCLUDED</span></div><div class="line"><span>COMMUNITY</span><span class="dots"></span><span>ALWAYS</span></div></div><div class="foot">Add this page to your phone’s Home Screen for quick check-in access.<br>iPhone: Share → Add to Home Screen · Android: Menu → Add to Home screen</div></div></main><div class="checkin-confirm" id="checkinConfirm" role="status" aria-live="polite"><div class="checkin-box"><h2>Welcome!</h2><p>You’re checked in</p></div></div><script>
+:root{--r:#C4282D;--c:#FFF3DF;--i:#2A1410;--p:#FFFDF8}*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:"DM Sans",sans-serif;color:var(--i)}body{min-height:100dvh;display:grid;place-items:center;padding:24px 15px calc(28px + env(safe-area-inset-bottom));background:#C4282D}.card{width:min(92vw,430px);background:var(--p);border:2px solid #ead9bf;border-radius:28px;box-shadow:0 26px 70px rgba(62,40,25,.19);padding:25px 22px 20px}.top{display:flex;justify-content:center;align-items:center;color:var(--r);border-bottom:2px dashed #d7c6ae;padding-bottom:17px;margin-bottom:2px}.top img.pass-wordmark{width:min(76vw,320px);height:auto;display:block;object-fit:contain}.word{display:none}.k{text-align:center;margin:17px 0 3px;font:600 12px "IBM Plex Mono";letter-spacing:1px}.name{text-align:center;font:29px "Bowlby One";color:var(--r);line-height:1.15;margin:0 0 18px}.qr{background:white;border:3px solid var(--i);border-radius:20px;padding:15px;width:max-content;max-width:100%;margin:auto;box-shadow:0 7px 0 #ead9bf}.qr canvas{display:block!important;width:min(62vw,270px)!important;height:min(62vw,270px)!important}.qr img{display:none!important}.receipt{margin-top:22px;border-top:2px dashed #d7c6ae;padding-top:14px;font:600 12px "IBM Plex Mono";line-height:1.8}.line{display:flex;gap:8px}.dots{flex:1;border-bottom:2px dotted #6b5148;transform:translateY(-5px)}.foot{text-align:center;margin-top:14px;font-size:11px;color:#69534b;line-height:1.45}.nf{text-align:center;padding:35px 8px}.nf h1{font:32px "Bowlby One";color:var(--r);margin:8px 0}.nf p{color:#684b43}.checkin-confirm{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(42,20,16,.28);backdrop-filter:blur(4px)}.checkin-confirm.show{display:flex}.checkin-box{position:relative;width:min(88vw,360px);background:var(--p);border:3px solid var(--i);border-radius:26px;box-shadow:0 10px 0 #ead9bf;padding:34px 24px;text-align:center}.checkin-box h2{font:38px "Bowlby One";color:var(--r);margin:0 0 8px;line-height:1}.checkin-box p{font-size:17px;font-weight:700;margin:0;color:var(--i)}.checkin-close{position:absolute;right:12px;top:10px;border:0;background:transparent;font-size:26px;line-height:1;cursor:pointer;color:var(--i);padding:6px}
+</style></head><body><main class="card"><div class="top"><img class="pass-wordmark" src="../assets/flavors-wordmark.svg" alt="FLAVORS"></div><div id="content"><div class="k">F26 COHORT PASS</div><div class="name" id="name">Loading…</div><div class="qr" id="qr"></div><div class="receipt"><div class="line"><span>1x FLAVORS MEMBER</span><span class="dots"></span><span>VERIFIED</span></div><div class="line"><span>GOOD COMPANY</span><span class="dots"></span><span>INCLUDED</span></div><div class="line"><span>COMMUNITY</span><span class="dots"></span><span>ALWAYS</span></div></div><div class="foot">Add this page to your phone’s Home Screen for quick check-in access.<br>iPhone: Share → Add to Home Screen · Android: Menu → Add to Home screen</div></div></main><div class="checkin-confirm" id="checkinConfirm" role="status" aria-live="polite"><div class="checkin-box"><button class="checkin-close" id="checkinClose" aria-label="Close">×</button><h2>Welcome!</h2><p>You’re checked in</p></div></div><script>
 const API_URL='https://script.google.com/macros/s/AKfycby70v3KBBasn9rwHOqa59-OHEKDQy2d9r6jO7rc1kq4F3Tm3Ahn-5GCzPbo-1hfOdyu/exec',
 code=new URLSearchParams(location.search).get('id')?.trim().toUpperCase()||'';
-let lastChecked=null,pollTimer=null,confirmTimer=null,requestInFlight=false,stopped=false;
+let lastChecked=null,pollTimer=null,requestInFlight=false,stopped=false,fastUntil=Date.now()+90000;
 
 async function memberStatus(){
   if(requestInFlight)return null;
@@ -15,10 +15,7 @@ async function memberStatus(){
 }
 
 function showCheckedIn(){
-  const el=document.getElementById('checkinConfirm');
-  el.classList.add('show');
-  clearTimeout(confirmTimer);
-  confirmTimer=setTimeout(()=>el.classList.remove('show'),3500);
+  document.getElementById('checkinConfirm').classList.add('show');
 }
 
 function stopPolling(){
@@ -32,7 +29,7 @@ function scheduleNext(meetingOpen){
   clearTimeout(pollTimer);
   pollTimer=null;
   if(stopped||!passIsVisible())return;
-  const delay=meetingOpen?30000:60000;
+  const delay=meetingOpen?(Date.now()<fastUntil?5000+Math.floor(Math.random()*1501):15000+Math.floor(Math.random()*3001)):60000;
   pollTimer=setTimeout(()=>{
     pollTimer=null;
     if(passIsVisible())checkStatus();
@@ -91,11 +88,11 @@ document.addEventListener('visibilitychange',()=>{
 window.addEventListener('blur',pausePassChecks);
 window.addEventListener('focus',resumePassChecks);
 window.addEventListener('pagehide',pausePassChecks);
-window.addEventListener('pageshow',resumePassChecks);
+window.addEventListener('pageshow',resumePassChecks);document.getElementById('checkinClose').onclick=()=>document.getElementById('checkinConfirm').classList.remove('show');
 
 function fail(msg='Card not found. Check the link and try again.'){
   stopPolling();
   document.getElementById('content').innerHTML='<div class="nf"><h1>CARD NOT FOUND</h1><p>'+msg+'</p></div>';
 }
-const startupDelay=Math.floor(Math.random()*3001);setTimeout(load,startupDelay);
+const startupDelay=Math.floor(Math.random()*1501);setTimeout(load,startupDelay);
 </script></body></html>
