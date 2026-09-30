@@ -182,7 +182,7 @@ function startMeeting_(cfg){
   applyAttendanceFormatting_(s,col);
 
   setConfigValues_({OPEN_MEETING_DATE:d,OPEN_MEETING_COLUMN:col});
-  return{ok:true,open:true,date:d,checkedIn:0,total:Math.max(s.getLastRow()-1,0)};
+  return{ok:true,open:true,date:d,checkedIn:0,total:Math.max(s.getLastRow()-1,0),column:col};
 }
 
 function recordScan_(raw,cfg){
@@ -201,9 +201,7 @@ function recordScan_(raw,cfg){
   if(!meetingDate){
     const started=startMeeting_(cfg);
     meetingDate=started.date;
-    meetingCol=SpreadsheetApp.getActive().getSheetByName(CONFIG_SHEET)
-      .createTextFinder('OPEN_MEETING_COLUMN').matchEntireCell(true).findNext().offset(0,1).getValue();
-    meetingCol=Number(meetingCol);
+    meetingCol=Number(started.column);
   }
 
   if(meetingDate!==today)return{ok:false,type:'closed',message:'No meeting is open for today.'};
@@ -268,7 +266,7 @@ function testFinalizeOpenMeetingNow(){
 }
 
 function applyAttendanceFormatting_(s,col){
-  const range=s.getRange(2,col,Math.max(s.getMaxRows()-1,1),1);
+  const range=s.getRange(2,col,Math.max(s.getLastRow()-1,1),1);
   const keep=s.getConditionalFormatRules().filter(rule=>!rule.getRanges().some(r=>r.getColumn()===col&&r.getSheet().getName()===ROSTER_SHEET));
   const p=SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Present').setBackground('#D9EAD3').setFontColor('#1F5F3A').setRanges([range]).build();
   const a=SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Absent').setBackground('#F4CCCC').setFontColor('#8A1C1C').setRanges([range]).build();
