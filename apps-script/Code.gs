@@ -69,6 +69,8 @@ function setupAttendanceSystem(){
 }
 
 function getConfigMap_(){
+  const cache=CacheService.getScriptCache(),hit=cache.get('cfg');
+  if(hit){try{return JSON.parse(hit);}catch(e){}}
   const s=SpreadsheetApp.getActive().getSheetByName(CONFIG_SHEET);
   if(!s)throw new Error('Config sheet is missing. Run setupAttendanceSystem first.');
   const v=s.getDataRange().getDisplayValues(),m={};
@@ -76,6 +78,7 @@ function getConfigMap_(){
     const k=String(v[i][0]||'').trim();
     if(k)m[k]=String(v[i][1]??'').trim();
   }
+  cache.put('cfg',JSON.stringify(m),60);
   return m;
 }
 
@@ -89,6 +92,9 @@ function setConfigValues_(updates){
     if(!row){row=s.getLastRow()+1;s.getRange(row,1).setValue(k);rows[k]=row;}
     s.getRange(row,2).setNumberFormat('@').setValue(String(updates[k]));
   });
+  const cache=CacheService.getScriptCache(),cfg=getConfigMap_();
+  Object.keys(updates).forEach(k=>cfg[k]=String(updates[k]));
+  cache.put('cfg',JSON.stringify(cfg),60);
 }
 
 function tzFromConfig_(cfg){return cfg.TIME_ZONE||DEFAULT_TZ;}
@@ -112,6 +118,24 @@ function rosterInfo_(){
   };
   return{s,headers,codeCol:col('Code'),nameCol:col('Name'),emailCol:col('Email'),passCol:headers.indexOf('Pass Link')+1};
 }
+
+function getRosterLookup_(){
+  const cache=CacheService.getScriptCache(),hit=cache.get('rosterLookup');
+  if(hit){try{return JSON.parse(hit);}catch(e){}}
+  const {s,codeCol,nameCol}=rosterInfo_(),n=s.getLastRow(),map={};
+  if(n>=2){
+    const codes=s.getRange(2,codeCol,n-1,1).getDisplayValues().flat();
+    const names=s.getRange(2,nameCol,n-1,1).getDisplayValues().flat();
+    for(let i=0;i<codes.length;i++){
+      const code=String(codes[i]||'').trim().toUpperCase();
+      if(code)map[code]={row:i+2,name:String(names[i]||'').trim()};
+    }
+  }
+  cache.put('rosterLookup',JSON.stringify(map),60);
+  return map;
+}
+
+function clearRosterCache_(){CacheService.getScriptCache().remove('rosterLookup');}
 
 function getUsedCodesSheet_(){
   const ss=SpreadsheetApp.getActive();
@@ -160,6 +184,7 @@ function generateMissingCodes(){
 
   s.getRange(2,codeCol,out.length,1).setValues(out);
   if(issued.length)u.getRange(u.getLastRow()+1,1,issued.length,2).setValues(issued);
+  clearRosterCache_();
 }
 
 function getStatus_(cfg){
@@ -187,12 +212,9 @@ function startMeeting_(cfg){
 
 function recordScan_(raw,cfg){
   const code=String(raw||'').trim().toUpperCase();
-  const {s,codeCol,nameCol}=rosterInfo_(),n=s.getLastRow();
-  if(!code||n<2)return{ok:false,type:'unknown',message:'Code not recognized.'};
-
-  const codes=s.getRange(2,codeCol,n-1,1).getDisplayValues().flat();
-  const idx=codes.findIndex(v=>String(v||'').trim().toUpperCase()===code);
-  if(idx<0)return{ok:false,type:'unknown',message:'Code not recognized.'};
+  if(!code)return{ok:false,type:'unknown',message:'Code not recognized.'};
+  const {s}=rosterInfo_(),member=getRosterLookup_()[code];
+  if(!member)return{ok:false,type:'unknown',message:'Code not recognized.'};
 
   let meetingDate=cfg.OPEN_MEETING_DATE;
   let meetingCol=Number(cfg.OPEN_MEETING_COLUMN||0);
@@ -206,8 +228,8 @@ function recordScan_(raw,cfg){
 
   if(meetingDate!==today)return{ok:false,type:'closed',message:'No meeting is open for today.'};
 
-  const row=idx+2;
-  const name=s.getRange(row,nameCol).getDisplayValue().trim();
+  const row=member.row;
+  const name=member.name;
   const cell=s.getRange(row,meetingCol);
 
   if(cell.getDisplayValue()==='Present')
@@ -275,19 +297,13 @@ function applyAttendanceFormatting_(s,col){
 
 function getMemberPublic_(code){
   const id=String(code||'').trim().toUpperCase();
-  const {s,codeCol,nameCol}=rosterInfo_(),n=s.getLastRow();
-  if(!id||n<2)return{ok:false,found:false};
-
-  const codes=s.getRange(2,codeCol,n-1,1).getDisplayValues().flat();
-  const idx=codes.findIndex(v=>String(v||'').trim().toUpperCase()===id);
-  if(idx<0)return{ok:false,found:false};
-
-  const cfg=getConfigMap_(),col=Number(cfg.OPEN_MEETING_COLUMN||0);
+  if(!id)return{ok:false,found:false};
+  const member=getRosterLookup_()[id];
+  if(!member)return{ok:false,found:false};
+  const {s}=rosterInfo_(),cfg=getConfigMap_(),col=Number(cfg.OPEN_MEETING_COLUMN||0);
   const open=cfg.OPEN_MEETING_DATE===todayFromConfig_(cfg)&&col>0;
-  const checkedIn=!!(open&&s.getRange(idx+2,col).getDisplayValue()==='Present');
-  const name=s.getRange(idx+2,nameCol).getDisplayValue().trim();
-
-  return{ok:true,found:true,name,meetingOpen:open,meetingDate:open?cfg.OPEN_MEETING_DATE:null,checkedIn};
+  const checkedIn=!!(open&&s.getRange(member.row,col).getDisplayValue()==='Present');
+  return{ok:true,found:true,name:member.name,meetingOpen:open,meetingDate:open?cfg.OPEN_MEETING_DATE:null,checkedIn};
 }
 
 function generatePassLinks(){
@@ -312,4 +328,5 @@ function generatePassLinks(){
   s.getRange(2,passCol,codes.length,1).setValues(codes.map(c=>[
     c?base+'/pass/?id='+encodeURIComponent(String(c).trim()):''
   ]));
+  clearRosterCache_();
 }
