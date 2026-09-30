@@ -59,8 +59,9 @@ async function load(){
     if(API_URL.startsWith('PASTE_'))throw new Error('Pass system is not connected yet.');
     const d=await memberStatus();
     if(!d||!d.found)return fail();
-    document.getElementById('name').textContent=d.firstName+' '+d.lastName;
-    document.title=d.firstName+' '+d.lastName+' — Flavors Pass';
+    const memberName=d.name||[d.firstName,d.lastName].filter(Boolean).join(' ');
+    document.getElementById('name').textContent=memberName;
+    document.title=memberName+' — Flavors Pass';
     lastChecked=!!d.checkedIn;
     new QRCode(document.getElementById('qr'),{
       text:code,width:300,height:300,colorDark:'#111111',colorLight:'#ffffff',
