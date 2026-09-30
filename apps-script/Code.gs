@@ -42,6 +42,7 @@ function setupAttendanceSystem(){
     ['OPEN_MEETING_DATE',''],['OPEN_MEETING_COLUMN','']
   ]);
   let l=ss.getSheetByName(LOG_SHEET); if(!l){l=ss.insertSheet(LOG_SHEET);l.getRange(1,1,1,5).setValues([['Timestamp','Meeting Date','Code','First Name','Last Name']]);l.hideSheet();}
+  let u=ss.getSheetByName('Used Codes');if(!u){u=ss.insertSheet('Used Codes');u.getRange(1,1,1,2).setValues([['Code','Issued At']]);u.hideSheet();}
   SpreadsheetApp.getUi().alert('Setup complete. Change SCANNER_PIN in Config.');
 }
 function getConfigMap_(){const s=SpreadsheetApp.getActive().getSheetByName(CONFIG_SHEET);if(!s)throw new Error('Config sheet is missing. Run setupAttendanceSystem first.');const v=s.getDataRange().getDisplayValues(),m={};for(let i=1;i<v.length;i++){const k=String(v[i][0]||'').trim();if(k)m[k]=String(v[i][1]??'').trim();}return m;}
@@ -51,11 +52,19 @@ function today_(){return Utilities.formatDate(new Date(),tz_(),'yyyy-MM-dd');}
 function requirePin_(pin){const e=getConfigMap_().SCANNER_PIN;if(!e)throw new Error('Scanner PIN is not configured.');if(String(pin||'')!==String(e))throw new Error('Incorrect PIN');}
 function randomCode_(){let s='';for(let i=0;i<8;i++)s+=CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];return s;}
 function generateMissingCodes(){
-  const s=SpreadsheetApp.getActive().getSheetByName(ROSTER_SHEET),n=s.getLastRow();if(n<2)return;
-  const existing=new Set(s.getRange(2,1,n-1,1).getDisplayValues().flat().filter(Boolean));
-  const names=s.getRange(2,2,n-1,2).getDisplayValues(),out=s.getRange(2,1,n-1,1).getDisplayValues();
-  for(let i=0;i<out.length;i++){if(!(names[i][0]||names[i][1])||out[i][0])continue;let c;do{c=randomCode_();}while(existing.has(c));existing.add(c);out[i][0]=c;}
+  const ss=SpreadsheetApp.getActive(),s=ss.getSheetByName(ROSTER_SHEET),n=s.getLastRow();if(n<2)return;
+  let u=ss.getSheetByName('Used Codes');if(!u){u=ss.insertSheet('Used Codes');u.getRange(1,1,1,2).setValues([['Code','Issued At']]);u.hideSheet();}
+  const current=s.getRange(2,1,n-1,1).getDisplayValues().flat().map(v=>String(v||'').trim().toUpperCase()).filter(Boolean);
+  const historical=u.getLastRow()>1?u.getRange(2,1,u.getLastRow()-1,1).getDisplayValues().flat().map(v=>String(v||'').trim().toUpperCase()).filter(Boolean):[];
+  const used=new Set([...current,...historical]);
+  const names=s.getRange(2,2,n-1,2).getDisplayValues(),out=s.getRange(2,1,n-1,1).getDisplayValues(),issued=[];
+  for(let i=0;i<out.length;i++){
+    if(!(names[i][0]||names[i][1])||out[i][0])continue;
+    let code;do{code=randomCode_();}while(used.has(code));
+    used.add(code);out[i][0]=code;issued.push([code,new Date()]);
+  }
   s.getRange(2,1,out.length,1).setValues(out);
+  if(issued.length)u.getRange(u.getLastRow()+1,1,issued.length,2).setValues(issued);
 }
 function startMeeting_(){
   const cfg=getConfigMap_(),d=today_();if(cfg.OPEN_MEETING_DATE===d&&Number(cfg.OPEN_MEETING_COLUMN)>0)return getStatus_();
