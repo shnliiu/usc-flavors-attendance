@@ -94,8 +94,15 @@ $('start').onclick=async()=>{
   b.disabled=true;b.textContent='STARTING…';
   try{
     const now=new Date();
-    const meetingId=now.toISOString().slice(0,10);
-    const label=now.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+    const parts=new Intl.DateTimeFormat('en-CA',{
+      timeZone:'America/Los_Angeles',
+      year:'numeric',month:'2-digit',day:'2-digit'
+    }).formatToParts(now).reduce((o,p)=>(o[p.type]=p.value,o),{});
+    const meetingId=`${parts.year}-${parts.month}-${parts.day}`;
+    const label=new Intl.DateTimeFormat('en-US',{
+      timeZone:'America/Los_Angeles',
+      month:'short',day:'numeric',year:'numeric'
+    }).format(now);
     await startMeeting(meetingId,label);
     mirrorEvent('startMeeting',{meetingId,label}).then(m=>{if(m&&!m.ok)toast('SHEET SYNC ISSUE',m.error||'Meeting opened in Firebase, but Sheet sync failed.','error')});
     await refreshStatus();
