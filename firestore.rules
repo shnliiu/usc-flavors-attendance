@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOfficer() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/officers/$(request.auth.uid));
+    }
+
+    // Public pass data contains no email or private roster fields.
+    match /publicMembers/{code} {
+      allow get: if true;
+      allow list: if false;
+      allow write: if isOfficer();
+    }
+
+    // Pass holders can read a single attendance document when they know its code.
+    // Writes are restricted to authenticated officers.
+    match /meetings/{meetingId} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if isOfficer();
+
+      match /attendance/{code} {
+        allow get: if true;
+        allow list: if isOfficer();
+        allow create, update: if isOfficer();
+        allow delete: if isOfficer();
+      }
+    }
+
+    // Private member records, including email, are officer-only.
+    match /members/{code} {
+      allow read, write: if isOfficer();
+    }
+
+    // Historical codes are never public and never reused.
+    match /usedCodes/{code} {
+      allow read, write: if isOfficer();
+    }
+
+    // Presence of this doc grants scanner/admin privileges to that Firebase user.
+    match /officers/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Single small public state document used by passes to learn the active meeting.
+    match /publicState/current {
+      allow get: if true;
+      allow list: if false;
+      allow write: if isOfficer();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
