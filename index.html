@@ -137,7 +137,7 @@ async function handle(raw){
     const state=await getCurrentMeeting();
     if(!state.open||!state.meetingId)throw new Error('Start a meeting before scanning.');
     const r=await checkInMember(state.meetingId,code);
-    if(r.type==='success') mirrorEvent('scan',{meetingId:state.meetingId,code}).then(m=>{if(m&&!m.ok)console.error('Present was saved in Firebase but not mirrored to Sheet:',m)});
+    if(r.type==='success') mirrorEvent('scan',{meetingId:state.meetingId,code}).then(m=>{if(m&&!m.ok){console.error('Present was saved in Firebase but not mirrored to Sheet:',m);setTimeout(()=>toast('SHEET SYNC ISSUE',m.error||'Present saved in Firebase, but Sheet sync failed.','error'),2300)}});
     if(r.type==='success'){
       const parts=$('count').textContent.split('/').map(x=>Number(x.trim())||0);
       $('count').textContent=(Math.min(parts[0]+1,parts[1]))+' / '+parts[1];
