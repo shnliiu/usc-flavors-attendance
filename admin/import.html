@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>USC Flavors Firebase Import</title>
+<style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px}button,input{font:inherit}button{padding:12px 16px;margin:6px 0}textarea{width:100%;min-height:180px}pre{white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:8px}</style></head><body>
+<h1>USC Flavors Firebase Import</h1>
+<p>Officer-only one-time roster importer. Export the Roster tab as CSV, then upload it here.</p>
+<button id="signin">Sign in with Google</button>
+<div id="who"></div>
+<hr>
+<input id="file" type="file" accept=".csv,text/csv">
+<button id="import" disabled>Import roster</button>
+<pre id="out">Waiting for officer sign-in.</pre>
+<script type="module">
+import { signInOfficer, auth, importRosterRows } from "../firebase-db.js";
+const out=document.getElementById('out'),btn=document.getElementById('import'),file=document.getElementById('file'),who=document.getElementById('who');
+let officer=false;
+document.getElementById('signin').onclick=async()=>{try{const u=await signInOfficer();officer=true;who.textContent='Signed in: '+u.email;out.textContent='Officer verified. Choose the Roster CSV.';btn.disabled=false}catch(e){out.textContent=e.message}};
+function parseCSV(text){
+  const rows=[];let row=[],cell='',q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(ch==='"'){if(q&&text[i+1]==='"'){cell+='"';i++}else q=!q}
+    else if(ch===','&&!q){row.push(cell);cell=''}
+    else if((ch==='\n'||ch==='\r')&&!q){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);cell='';if(row.some(x=>x!==''))rows.push(row);row=[]}
+    else cell+=ch;
+  }
+  if(cell||row.length){row.push(cell);rows.push(row)}
+  return rows;
+}
+function normalize(rows){
+  if(!rows.length)return[];
+  const h=rows[0].map(x=>x.trim().toLowerCase());
+  const idx=name=>h.indexOf(name.toLowerCase());
+  const ci=idx('code'),pi=idx('pass link'),ni=idx('name'),ei=idx('email');
+  if(ci<0||ni<0)throw new Error('CSV must contain Code and Name headers.');
+  return rows.slice(1).map(r=>({code:r[ci]||'',passLink:pi>=0?r[pi]||'':'',name:r[ni]||'',email:ei>=0?r[ei]||'':''}));
+}
+btn.onclick=async()=>{if(!officer)return;const f=file.files[0];if(!f)return out.textContent='Choose a CSV file first.';btn.disabled=true;try{const rows=normalize(parseCSV(await f.text()));const n=await importRosterRows(rows,'https://checkin.uscflavors.com');out.textContent='Imported '+n+' members into Firestore. Existing codes were preserved.'}catch(e){out.textContent='Import failed: '+e.message}finally{btn.disabled=false}};
+</script></body></html>
