@@ -11,52 +11,137 @@
 <div class="offline" id="offline">You’re offline. Reconnect before scanning.</div><section class="card"><div class="top"><div class="date" id="date">MEETING: NOT STARTED</div><div><button class="start" id="start">Start meeting</button><button class="close" id="close">Close meeting</button></div></div><div class="camera"><div id="reader"></div><div class="scan-frame"></div></div><button class="retry" id="retry">Enable camera</button><div class="hint">Hold a member QR code inside the square.</div><div class="manual"><input id="manual" maxlength="8" placeholder="TYPE CODE"><button id="manualBtn">CHECK IN</button></div></section></main></div>
 <div class="toast" id="toast"><div class="name" id="toastName"></div><div class="msg" id="toastMsg"></div></div>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import {
+  signInOfficer, watchAuth, isOfficerUser,
+  getScannerStatus, getCurrentMeeting, checkInMember,
+  startMeeting, closeMeeting
+} from "./firebase-db.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDQX_PZdxq4Ag1cJ6LS7Ay-zLSm-lsEvLs",
-  authDomain: "usc-flavors-attendance.firebaseapp.com",
-  projectId: "usc-flavors-attendance",
-  storageBucket: "usc-flavors-attendance.firebasestorage.app",
-  messagingSenderId: "387800447090",
-  appId: "1:387800447090:web:fa49f14d08de07e10aaaeb"
+const $=x=>document.getElementById(x);
+let qr,busy=false,last='',lastAt=0,timer,currentUser=null,currentMeeting=null;
+
+function render(s){
+  $('count').textContent=`${s.checkedIn||0} / ${s.total||0}`;
+  $('meeting').textContent=s.open?`${s.label||s.meetingId||'MEETING'} OPEN`:'NO MEETING OPEN';
+  $('date').textContent=s.open?`MEETING: ${s.label||s.meetingId}`:'MEETING: NOT STARTED';
+  $('start').style.display=s.open?'none':'block';
+  $('close').style.display=s.open?'block':'none';
+  currentMeeting=s.open?{meetingId:s.meetingId,label:s.label||s.meetingId}:null;
+}
+function toast(name,msg,type=''){
+  clearTimeout(timer);
+  $('toastName').textContent=name;
+  $('toastMsg').textContent=msg;
+  $('toast').className='toast show '+type;
+  timer=setTimeout(()=>$('toast').className='toast',2100);
+}
+async function refreshStatus(){
+  try{render(await getScannerStatus())}
+  catch(e){toast('STATUS ERROR',e.message||'Could not load scanner status.','error')}
+}
+async function openScannerForUser(user){
+  const ok=await isOfficerUser(user);
+  if(!ok)throw new Error('This Google account is not authorized as a Flavors officer.');
+  currentUser=user;
+  $('pin').style.display='none';
+  await refreshStatus();
+  startCamera();
+}
+async function googleSignIn(){
+  const btn=$('googleSignInBtn'),err=$('pinErr'),old=btn.textContent;
+  btn.disabled=true;btn.textContent='SIGNING IN…';err.textContent='';
+  try{
+    const user=await signInOfficer();
+    err.style.color='#2E7D4F';
+    err.textContent='Signed in as '+(user.email||'Google user')+'.';
+    await openScannerForUser(user);
+  }catch(e){
+    err.style.color='#9f2024';
+    err.textContent=e.message||'Google sign-in failed.';
+  }finally{
+    btn.disabled=false;btn.textContent=old;
+  }
+}
+$('googleSignInBtn').onclick=googleSignIn;
+
+// Retire PIN unlock; keep field visually for now only as fallback cue until next UI cleanup.
+$('pinBtn').onclick=()=>googleSignIn();
+$('pinInput').onkeydown=e=>{if(e.key==='Enter')googleSignIn()};
+
+$('start').onclick=async()=>{
+  const b=$('start'),old=b.textContent;
+  b.disabled=true;b.textContent='STARTING…';
+  try{
+    const now=new Date();
+    const meetingId=now.toISOString().slice(0,10);
+    const label=now.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+    await startMeeting(meetingId,label);
+    await refreshStatus();
+    toast('MEETING OPEN','Ready to scan!');
+  }catch(e){toast('CAN’T START',e.message||'Unable to start meeting.','error')}
+  finally{b.disabled=false;b.textContent=old}
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
+$('close').onclick=async()=>{
+  if(!currentMeeting)return;
+  if(!confirm('Close this meeting now?'))return;
+  const b=$('close'),old=b.textContent;
+  b.disabled=true;b.textContent='CLOSING…';
+  try{
+    await closeMeeting(currentMeeting.meetingId);
+    await refreshStatus();
+    toast('MEETING CLOSED','Attendance is saved in Firebase.');
+  }catch(e){toast('CAN’T CLOSE',e.message||'Unable to close meeting.','error')}
+  finally{b.disabled=false;b.textContent=old}
+};
 
-document.getElementById('googleSignInBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('googleSignInBtn');
-  const err = document.getElementById('pinErr');
-  const old = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = 'SIGNING IN…';
-  err.textContent = '';
-  try {
-    const result = await signInWithPopup(auth, provider);
-    err.style.color = '#2E7D4F';
-    err.textContent = 'Signed in as ' + (result.user.email || 'Google user') + '.';
-  } catch (e) {
-    err.style.color = '#9f2024';
-    err.textContent = e.message || 'Google sign-in failed.';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = old;
-  }
-});
-</script>
-<script>
-const API_URL='https://script.google.com/macros/s/AKfycbwg803zN5jMtElZzO2IQG0JyR1vb1cRkAD22M4sq6QFpxzx2Jz-BVPOlzEyNdYGsjuvAA/exec';
-const $=x=>document.getElementById(x);const navType=(performance.getEntriesByType('navigation')[0]||{}).type;let pin=navType==='reload'?(sessionStorage.getItem('flavorsScannerPin')||''):'',qr,busy=false,last='',lastAt=0,timer;if(navType!=='reload')sessionStorage.removeItem('flavorsScannerPin');
-async function api(body){if(API_URL.startsWith('PASTE_'))throw new Error('API URL has not been configured yet.');const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});const d=await r.json();if(!d.ok&&d.error)throw new Error(d.error);return d}
-function render(s){$('count').textContent=`${s.checkedIn||0} / ${s.total||0}`;$('meeting').textContent=s.open?`${s.date} OPEN`:'NO MEETING OPEN';$('date').textContent=s.open?`MEETING: ${s.date}`:'MEETING: NOT STARTED';$('start').style.display=s.open?'none':'block';$('close').style.display=s.open?'block':'none'}
-function toast(name,msg,type=''){clearTimeout(timer);$('toastName').textContent=name;$('toastMsg').textContent=msg;$('toast').className='toast show '+type;timer=setTimeout(()=>$('toast').className='toast',2100)}
-async function unlock(){const p=$('pinInput').value.trim()||pin;$('pinErr').textContent='';const b=$('pinBtn'),old=b.textContent;b.disabled=true;b.textContent='OPENING…';try{const s=await api({action:'bootstrap',pin:p});pin=p;sessionStorage.setItem('flavorsScannerPin',pin);$('pin').style.display='none';render(s);startCamera()}catch(e){$('pinErr').textContent=e.message==='Incorrect PIN'?'That PIN does not match.':e.message}finally{b.disabled=false;b.textContent=old}}
-$('pinBtn').onclick=unlock;$('pinInput').onkeydown=e=>{if(e.key==='Enter')unlock()};$('start').onclick=async()=>{const b=$('start'),old=b.textContent;b.disabled=true;b.textContent='STARTING…';try{render(await api({action:'startMeeting',pin}));toast('MEETING OPEN','Ready to scan!')}catch(e){toast('CAN’T START',e.message,'error')}finally{b.disabled=false;b.textContent=old}};$('close').onclick=async()=>{if(!confirm('Close this meeting now? Everyone who has not checked in will be marked Absent.'))return;const b=$('close'),old=b.textContent;b.disabled=true;b.textContent='CLOSING…';try{const r=await api({action:'closeMeeting',pin});render(r.status||{open:false,checkedIn:0,total:0});toast('MEETING CLOSED','Unscanned members were marked Absent.')}catch(e){toast('CAN’T CLOSE',e.message,'error')}finally{b.disabled=false;b.textContent=old}};
-async function handle(raw){const code=String(raw||'').trim().toUpperCase();if(!code||busy)return;const now=Date.now();if(code===last&&now-lastAt<3500)return;last=code;lastAt=now;busy=true;toast('CHECKING IN…','Please wait');try{if(!navigator.onLine)throw new Error('You’re offline. Reconnect and try again.');const r=await api({action:'scan',pin,code});if(r.type==='success'){const parts=$('count').textContent.split('/').map(x=>Number(x.trim())||0);$('count').textContent=(Math.min(parts[0]+1,parts[1]))+' / '+parts[1];beep();navigator.vibrate?.(70);toast(r.name||'Member','Welcome!')}else if(r.type==='already')toast(r.name||'Member','Already checked in — you’re all set!');else toast('NOT FOUND',r.message||'Code not recognized.','error')}catch(e){toast('TRY AGAIN',e.message,'error')}finally{setTimeout(()=>busy=false,250)}}
+async function handle(raw){
+  const code=String(raw||'').trim().toUpperCase();
+  if(!code||busy)return;
+  const now=Date.now();
+  if(code===last&&now-lastAt<3500)return;
+  last=code;lastAt=now;busy=true;
+  toast('CHECKING IN…','Please wait');
+  try{
+    if(!navigator.onLine)throw new Error('You’re offline. Reconnect and try again.');
+    const state=await getCurrentMeeting();
+    if(!state.open||!state.meetingId)throw new Error('Start a meeting before scanning.');
+    const r=await checkInMember(state.meetingId,code);
+    if(r.type==='success'){
+      const parts=$('count').textContent.split('/').map(x=>Number(x.trim())||0);
+      $('count').textContent=(Math.min(parts[0]+1,parts[1]))+' / '+parts[1];
+      beep();navigator.vibrate?.(70);toast(r.name||'Member','Welcome!');
+    }else if(r.type==='already'){
+      toast(r.name||'Member','Already checked in — you’re all set!');
+    }else{
+      toast('NOT FOUND','Code not recognized.','error');
+    }
+  }catch(e){toast('TRY AGAIN',e.message||'Check-in failed.','error')}
+  finally{setTimeout(()=>busy=false,250)}
+}
+
 function beep(){try{const C=window.AudioContext||window.webkitAudioContext,c=new C(),o=c.createOscillator(),g=c.createGain();o.frequency.value=740;g.gain.setValueAtTime(.035,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.09);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.1)}catch{}}
-async function startCamera(){if(!window.Html5Qrcode){setTimeout(startCamera,250);return}try{qr=new Html5Qrcode('reader',{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE],verbose:false});const cams=await Html5Qrcode.getCameras(),cam=cams.find(x=>/back|rear|environment/i.test(x.label))||cams[cams.length-1];await qr.start(cam.id,{fps:24,qrbox:(w,h)=>{const s=Math.floor(Math.min(w,h)*.68);return{width:s,height:s}},aspectRatio:1},x=>handle(x),()=>{});$('retry').style.display='none'}catch(e){$('retry').style.display='block';toast('CAMERA NEEDED','Tap Enable camera and allow camera access.','error')}}
-$('retry').onclick=startCamera;$('manualBtn').onclick=()=>{const v=$('manual').value;if(!v)return;$('manual').value='';handle(v)};$('manual').onkeydown=e=>{if(e.key==='Enter')$('manualBtn').click()};function net(){$('offline').style.display=navigator.onLine?'none':'block'}addEventListener('online',net);addEventListener('offline',net);net();if(pin){unlock()}
+
+async function startCamera(){
+  if(!window.Html5Qrcode){setTimeout(startCamera,250);return}
+  try{
+    qr=new Html5Qrcode('reader',{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE],verbose:false});
+    const cams=await Html5Qrcode.getCameras(),cam=cams.find(x=>/back|rear|environment/i.test(x.label))||cams[cams.length-1];
+    await qr.start(cam.id,{fps:24,qrbox:(w,h)=>{const s=Math.floor(Math.min(w,h)*.68);return{width:s,height:s}},aspectRatio:1},x=>handle(x),()=>{});
+    $('retry').style.display='none';
+  }catch(e){
+    $('retry').style.display='block';
+    toast('CAMERA NEEDED','Tap Enable camera and allow camera access.','error');
+  }
+}
+$('retry').onclick=startCamera;
+$('manualBtn').onclick=()=>{const v=$('manual').value;if(!v)return;$('manual').value='';handle(v)};
+$('manual').onkeydown=e=>{if(e.key==='Enter')$('manualBtn').click()};
+function net(){$('offline').style.display=navigator.onLine?'none':'block'}
+addEventListener('online',net);addEventListener('offline',net);net();
+
+watchAuth(async user=>{
+  if(!user)return;
+  try{await openScannerForUser(user)}catch{}
+});
 </script></body></html>
