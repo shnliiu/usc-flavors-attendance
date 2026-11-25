@@ -18,6 +18,7 @@ import {
 } from "./firebase-db.js";
 
 const $=x=>document.getElementById(x);
+const MIRROR_URL='https://script.google.com/macros/s/AKfycbyeRNaB9FPBK4i9eRrX5vnDyBYr8UWq0O2QMi-5h7HeGesAAzHTb7ippfhB_cmgSrzueA/exec';
 let qr,busy=false,last='',lastAt=0,timer,currentUser=null,currentMeeting=null;
 
 function render(s){
@@ -34,6 +35,18 @@ function toast(name,msg,type=''){
   $('toastMsg').textContent=msg;
   $('toast').className='toast show '+type;
   timer=setTimeout(()=>$('toast').className='toast',2100);
+}
+async function mirrorEvent(action,payload={}){
+  try{
+    if(!currentUser||!MIRROR_URL)return;
+    const idToken=await currentUser.getIdToken();
+    fetch(MIRROR_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action,idToken,...payload}),
+      keepalive:true
+    }).catch(()=>{});
+  }catch{}
 }
 async function refreshStatus(){
   try{render(await getScannerStatus())}
@@ -75,6 +88,7 @@ $('start').onclick=async()=>{
     const meetingId=now.toISOString().slice(0,10);
     const label=now.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
     await startMeeting(meetingId,label);
+    mirrorEvent('startMeeting',{meetingId,label});
     await refreshStatus();
     toast('MEETING OPEN','Ready to scan!');
   }catch(e){toast('CAN’T START',e.message||'Unable to start meeting.','error')}
@@ -88,6 +102,7 @@ $('close').onclick=async()=>{
   b.disabled=true;b.textContent='CLOSING…';
   try{
     await closeMeeting(currentMeeting.meetingId);
+    mirrorEvent('closeMeeting',{meetingId:currentMeeting.meetingId});
     await refreshStatus();
     toast('MEETING CLOSED','Attendance is saved in Firebase.');
   }catch(e){toast('CAN’T CLOSE',e.message||'Unable to close meeting.','error')}
@@ -106,6 +121,7 @@ async function handle(raw){
     const state=await getCurrentMeeting();
     if(!state.open||!state.meetingId)throw new Error('Start a meeting before scanning.');
     const r=await checkInMember(state.meetingId,code);
+    if(r.type==='success') mirrorEvent('scan',{meetingId:state.meetingId,code});
     if(r.type==='success'){
       const parts=$('count').textContent.split('/').map(x=>Number(x.trim())||0);
       $('count').textContent=(Math.min(parts[0]+1,parts[1]))+' / '+parts[1];
